@@ -29,8 +29,12 @@ def index():
             else:
                 weather_message = "Погода — супер!"
 
+        except ValueError as e:
+            weather_message = f"Ошибка ввода данных: {str(e)}"
+        except requests.exceptions.RequestException as e:
+            weather_message = f"Ошибка подключения к серверу: {str(e)}"
         except Exception as e:
-            weather_message = f"Ошибка при получении данных: {str(e)}"
+            weather_message = f"Произошла ошибка: {str(e)}. Пожалуйста, попробуйте снова."
 
     return render_template('index.html',
                            weather_message=weather_message,
