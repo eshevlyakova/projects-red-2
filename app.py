@@ -17,6 +17,14 @@ def get_weather():
 
     weather_data, status_code = get_weather_by_coordinates(latitude, longitude)
 
+    bad_weather = check_bad_weather(
+        temperature=weather_data['temperature_celsius'],
+        wind_speed=weather_data['wind_speed_kph'],
+        rain_probability=weather_data['rain_probability_percent'],
+        humidity=weather_data['humidity']
+    )
+    weather_data['bad_weather'] = bad_weather
+
     return jsonify(weather_data), status_code
 
 
@@ -60,6 +68,13 @@ def get_weather_by_coordinates(latitude: float, longitude: float):
 
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}, 500
+
+def check_bad_weather(temperature: float, wind_speed: float, rain_probability: float, humidity: float):
+    if (temperature < 0 or temperature > 35 or wind_speed > 50 or rain_probability > 70
+        or (humidity > 85 and temperature > 30)) or (humidity < 20 and wind_speed > 50):
+        return True
+
+    return False
 
 if __name__ == '__main__':
     app.run(debug=True)
