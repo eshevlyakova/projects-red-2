@@ -1,12 +1,30 @@
 from flask import Flask, request, render_template
 import requests
+from dash import Dash, html, dcc
+from dash.dependencies import Input, Output
+import plotly.graph_objs as go
 
 app = Flask(__name__)
 
 API_KEY = 'hcim65SyN9VGqzB0ULKzGBEwR5B0e8rE'
 BASE_URL = 'http://dataservice.accuweather.com/'
 
+dash_app = Dash(__name__, server=app, url_base_pathname='/dash/')
+dash_app.layout = html.Div([
+    dcc.Checklist(
+        id='parameter-checklist',
+        options=[
+            {'label': 'Температура', 'value': 'temperature'},
+            {'label': 'Влажность', 'value': 'humidity'},
+            {'label': 'Скорость ветра', 'value': 'wind_speed'}
+        ],
+        value=['temperature', 'humidity', 'wind_speed'],
+        labelStyle={'display': 'block'}
+    ),
+    html.Div(id='graphs-container', style={"display": "flex", "flex-wrap": "wrap"})
+])
 
+city_data = {}
 @app.route('/', methods=['GET', 'POST'])
 def index():
     weather_message = None
@@ -29,6 +47,12 @@ def index():
             else:
                 weather_message = "Погода — супер!"
 
+            global city_data
+            city_data = {
+                start_city: start_weather,
+                end_city: end_weather
+            }
+
         except ValueError as e:
             weather_message = f"Ошибка ввода данных: {str(e)}"
         except requests.exceptions.RequestException as e:
@@ -41,6 +65,33 @@ def index():
                            start_weather_data=start_weather_data,
                            end_weather_data=end_weather_data)
 
+@dash_app.callback(
+    Output('graphs-container', 'children'),
+    [Input('parameter-checklist', 'value')]
+)
+def update_graphs(selected_parameters):
+    if not city_data:
+        return []
+
+    graphs = []
+
+    for parameter in selected_parameters:
+        figure = go.Figure()
+        for city, data in city_data.items():
+            figure.add_trace(go.Bar(
+                x=[city],
+                y=[data[parameter]],
+                name=city
+            ))
+        figure.update_layout(
+            title=parameter.capitalize(),
+            yaxis_title='Значение',
+            barmode='group',
+            height=400
+        )
+        graphs.append(dcc.Graph(figure=figure, style={"width": "45%", "margin": "10px"}))
+
+    return graphs
 
 def get_weather_by_city(city_name):
     try:
@@ -66,7 +117,7 @@ def get_weather_by_city(city_name):
 
         weather_info = weather_data[0]
         return {
-            "temperature": (weather_info["Temperature"]["Metric"]["Value"]),
+            "temperature": weather_info["Temperature"]["Metric"]["Value"],
             "humidity": weather_info["RelativeHumidity"],
             "wind_speed": weather_info["Wind"]["Speed"]["Metric"]["Value"],
             "rain_probability": weather_info.get("RainProbability", 0)
@@ -79,7 +130,6 @@ def check_bad_weather(temperature: float, wind_speed: float, rain_probability: f
     if (temperature < 0 or temperature > 35 or wind_speed > 50 or rain_probability > 70
         or (humidity > 85 and temperature > 30)) or (humidity < 20 and wind_speed > 50):
         return True
-
     return False
 
 if __name__ == '__main__':
