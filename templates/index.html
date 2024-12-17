@@ -18,7 +18,7 @@
                 align-items: flex-start;
                 height: 100vh;
             }
-            h1, h3 {
+            h1, h2, h3 {
                 font-size: 1.8em;
                 color: #333;
                 margin-bottom: 20px;
@@ -37,7 +37,7 @@
                 margin-bottom: 10px;
                 display: block;
             }
-            .form-container input[type="text"] {
+            .form-container input[type="text"], .form-container input[type="number"] {
                 width: calc(100% - 20px);
                 padding: 10px;
                 margin-bottom: 15px;
@@ -78,16 +78,29 @@
         <div class="form-container">
             <h1>Проверка погоды</h1>
             <form method="POST" action="/">
-                <label for="start">Начальный пункт:</label>
-                <input type="text" id="start" name="start" required>
-                <label for="end">Конечный пункт:</label>
-                <input type="text" id="end" name="end" required>
+                <label for="city1">Город 1:</label>
+                <input type="text" id="city1" name="city1" placeholder="Начальный пункт" required>
+
+                <label for="city2">Город 2:</label>
+                <input type="text" id="city2" name="city2" placeholder="Промежуточный пункт 1">
+
+                <label for="city3">Город 3:</label>
+                <input type="text" id="city3" name="city3" placeholder="Промежуточный пункт 2">
+
+                <label for="city4">Город 4:</label>
+                <input type="text" id="city4" name="city4" placeholder="Промежуточный пункт 3">
+
+                <label for="city5">Город 5:</label>
+                <input type="text" id="city5" name="city5" placeholder="Конечный пункт">
+
+
                 <button type="submit">Проверить погоду</button>
             </form>
-            {% if start_weather_data or end_weather_data %}
+            {% if formatted_weather_data %}
             <h2>Погода в городах</h2>
-            <p>{{ start_weather_data }}</p>
-            <p>{{ end_weather_data }}</p>
+            {% for weather in formatted_weather_data %}
+                <p>{{ weather }}</p>
+            {% endfor %}
             {% endif %}
             {% if weather_message %}
             <h2>Оценка погодных условий</h2>
@@ -96,7 +109,7 @@
         </div>
         <div class="graph-container">
             <h3>Интерактивная визуализация погодных данных</h3>
-            <iframe src="/dash/"></iframe>
+            <iframe src="/dash/" title="Графики погоды"></iframe>
         </div>
     </body>
 </html>
