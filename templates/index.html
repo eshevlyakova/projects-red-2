@@ -6,93 +6,109 @@
         <title>Проверка погоды</title>
         <style>
             * {
-                box-sizing: border-box
+                box-sizing: border-box;
             }
             body {
                 font-family: Arial, sans-serif;
                 background-color: #f0f8ff;
                 margin: 0;
-                padding: 20px;
+                padding: 0;
                 display: flex;
-                flex-direction: column;
-                align-items: center;
+                flex-direction: row;
+                align-items: flex-start;
+                height: 100vh;
             }
-
-            h1 {
+            h1, h2, h3 {
+                font-size: 1.8em;
                 color: #333;
+                margin-bottom: 20px;
             }
-
-            form {
+            .form-container {
+                width: 30%;
+                height: 100%;
+                padding: 20px;
                 background-color: #ffffff;
                 border: 1px solid #ccc;
-                border-radius: 8px;
-                padding: 20px;
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-                width: 350px;
+                overflow-y: auto;
             }
-
-            label {
+            .form-container label, .form-container p {
+                font-size: 1.1em;
+                margin-bottom: 10px;
                 display: block;
-                margin: 10px 0 5px;
             }
-
-            input[type="text"] {
-                width: 100%;
-                padding: 8px;
+            .form-container input[type="text"], .form-container input[type="number"] {
+                width: calc(100% - 20px);
+                padding: 10px;
                 margin-bottom: 15px;
                 border: 1px solid #ccc;
                 border-radius: 4px;
-                outline: none;
                 font-size: 1.1em;
             }
-
-            button {
+            .form-container button {
                 background-color: #007bff;
                 color: white;
                 padding: 10px 15px;
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
-                width: 100%;
-                transition: 0.3s;
                 font-size: 1.1em;
             }
-
-            button:hover {
+            .form-container button:hover {
                 background-color: #0056b3;
             }
-
-            h2 {
-                color: #007bff;
+            .graph-container {
+                width: 70%;
+                height: 100%;
+                padding: 20px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-start;
+                justify-content: space-around;
+                overflow-y: auto;
             }
-
-            p {
-                font-size: 1.2em;
-                color: #555;
+            iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
             }
         </style>
     </head>
     <body>
-        <h1>Проверка погоды</h1>
-        <form method="POST" action="/">
-            <label for="start">Начальный пункт:</label>
-            <input type="text" id="start" name="start" required>
+        <div class="form-container">
+            <h1>Проверка погоды</h1>
+            <form method="POST" action="/">
+                <label for="city1">Город 1:</label>
+                <input type="text" id="city1" name="city1" placeholder="Начальный пункт" required>
 
-            <label for="end">Конечный пункт:</label>
-            <input type="text" id="end" name="end" required>
+                <label for="city2">Город 2:</label>
+                <input type="text" id="city2" name="city2" placeholder="Промежуточный пункт 1">
 
-            <button type="submit">Проверить погоду</button>
-        </form>
+                <label for="city3">Город 3:</label>
+                <input type="text" id="city3" name="city3" placeholder="Промежуточный пункт 2">
 
-        {% if start_weather_data or end_weather_data %}
-        <h2>Погода в городах</h2>
-        <p>{{ start_weather_data }}</p>
-        <p>{{ end_weather_data }}</p>
-        {% endif %}
+                <label for="city4">Город 4:</label>
+                <input type="text" id="city4" name="city4" placeholder="Промежуточный пункт 3">
 
-        {% if weather_message %}
-        <h2>Оценка погодных условий</h2>
-        <p>{{ weather_message }}</p>
-        {% endif %}
+                <label for="city5">Город 5:</label>
+                <input type="text" id="city5" name="city5" placeholder="Конечный пункт">
+
+                <button type="submit">Проверить погоду</button>
+            </form>
+            {% if formatted_weather_data %}
+            <h2>Погода в городах</h2>
+            {% for weather in formatted_weather_data %}
+                <p>{{ weather }}</p>
+            {% endfor %}
+            {% endif %}
+            {% if weather_message %}
+            <h2>Оценка погодных условий</h2>
+            <p>{{ weather_message }}</p>
+            {% endif %}
+        </div>
+        <div class="graph-container">
+            <h3>Интерактивная визуализация погодных данных</h3>
+            <iframe src="/dash/" title="Графики погоды"></iframe>
+        </div>
     </body>
 </html>
