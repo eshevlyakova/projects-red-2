@@ -11,7 +11,6 @@ BASE_URL = 'http://dataservice.accuweather.com/'
 
 dash_app = Dash(__name__, server=app, url_base_pathname='/dash/')
 dash_app.layout = html.Div([
-    html.H2("Настройки графиков"),
     html.Label("Количество дней прогноза (от 2 до 5):"),
     dcc.Input(
         id='days-input',
@@ -32,8 +31,14 @@ dash_app.layout = html.Div([
         value=['temperature', 'humidity', 'wind_speed'],
         labelStyle={'display': 'block'}
     ),
-    html.Div(id='graphs-container', style={"display": "flex", "flex-wrap": "wrap"})
+    html.Div(id='graphs-container', style={"display": "flex", "flex-wrap": "wrap"}),
+    dcc.Graph(id='route-map', style={"width": "100%", "height": "600px", "margin-top": "20px"})
 ])
+
+COLOR_SEQUENCE = [
+    'red', 'blue', 'green', 'orange', 'purple',
+    'brown', 'pink', 'gray', 'olive', 'cyan'
+]
 
 city_data = {}
 
@@ -89,13 +94,14 @@ def index():
                            formatted_weather_data=formatted_weather_data)
 
 @dash_app.callback(
-    Output('graphs-container', 'children'),
+    [Output('graphs-container', 'children'),
+     Output('route-map', 'figure')],
     [Input('parameter-checklist', 'value'),
      Input('days-input', 'value')]
 )
 def update_graphs(selected_parameters, days):
     if not selected_parameters:
-        return []
+        return [], go.Figure()
 
     try:
         days = int(days)
@@ -106,13 +112,13 @@ def update_graphs(selected_parameters, days):
         days = 2
 
     if not city_data:
-        return []
+        return [], go.Figure()
 
     graphs = []
 
     for parameter in selected_parameters:
         figure = go.Figure()
-        for city, data in city_data.items():
+        for idx, (city, data) in enumerate(city_data.items()):
             all_days = [day['date'] for day in data['forecast']]
             all_values = [day[parameter] for day in data['forecast']]
 
@@ -123,7 +129,8 @@ def update_graphs(selected_parameters, days):
                 x=days_to_show,
                 y=values_to_show,
                 mode='lines+markers',
-                name=city
+                name=city,
+                line=dict(color=COLOR_SEQUENCE[idx % len(COLOR_SEQUENCE)])
             ))
 
         figure.update_layout(
@@ -135,7 +142,65 @@ def update_graphs(selected_parameters, days):
         )
         graphs.append(dcc.Graph(figure=figure, style={"width": "100%", "margin": "10px"}))
 
-    return graphs
+    map_figure = go.Figure()
+
+    latitudes = []
+    longitudes = []
+    colors = []
+
+    for idx, (city, data) in enumerate(city_data.items()):
+        forecast = data['forecast'][0]
+        latitude = data['latitude']
+        longitude = data['longitude']
+        temperature = forecast['temperature']
+        humidity = forecast['humidity']
+        wind_speed = forecast['wind_speed']
+
+        latitudes.append(latitude)
+        longitudes.append(longitude)
+        colors.append(COLOR_SEQUENCE[idx % len(COLOR_SEQUENCE)])
+
+        map_figure.add_trace(go.Scattergeo(
+            lon=[longitude],
+            lat=[latitude],
+            hoverinfo='text',
+            text=f"{city}<br>Температура: {temperature}°C<br>Влажность: {humidity}%<br>Ветер: {wind_speed} км/ч",
+            mode='markers',
+            marker=dict(
+                size=10,
+                symbol='circle',
+                color=colors[-1],
+                line=dict(width=1, color='black')
+            ),
+            name=city
+        ))
+
+    if latitudes and longitudes:
+        center_lat = sum(latitudes) / len(latitudes)
+        center_lon = sum(longitudes) / len(longitudes)
+    else:
+        center_lat, center_lon = 0, 0
+
+    map_figure.update_layout(
+        title="Маршрут с прогнозами погоды",
+        geo=dict(
+            scope='world',
+            projection_type='natural earth',
+            showland=True,
+            landcolor="rgb(243, 243, 243)",
+            countrycolor="rgb(204, 204, 204)",
+            center=dict(
+                lat=center_lat,
+                lon=center_lon
+            ),
+            showocean=True,
+            oceancolor="LightBlue",
+            lataxis=dict(showgrid=True, gridcolor='LightGrey'),
+            lonaxis=dict(showgrid=True, gridcolor='LightGrey'),
+        )
+    )
+
+    return graphs, map_figure
 
 def get_weather_by_city(city_name):
     try:
@@ -149,6 +214,9 @@ def get_weather_by_city(city_name):
             raise ValueError(f"Не удалось найти город: {city_name}")
 
         location_key = location_data[0]['Key']
+        geo_position = location_data[0]['GeoPosition']
+        latitude = geo_position['Latitude']
+        longitude = geo_position['Longitude']
 
         weather_url = f'{BASE_URL}forecasts/v1/daily/5day/{location_key}'
         weather_params = {'apikey': API_KEY, 'details': 'true'}
@@ -178,10 +246,13 @@ def get_weather_by_city(city_name):
             })
 
         return {
-            "forecast": forecasts
+            "forecast": forecasts,
+            "latitude": latitude,
+            "longitude": longitude
         }
 
     except requests.exceptions.RequestException as e:
+        print(f"Ошибка запроса для города {city_name}: {e}")
         raise RuntimeError(f"Ошибка запроса: {e}")
 
 def check_bad_weather(temperature: float, wind_speed: float, humidity: float, **kwargs):
